@@ -1,4 +1,8 @@
-# Multi Ciphers
+<div align="center">
+ 
+<a href="https://github.com/effjy/multi-ciphers/"><img src="titles/multi-ciphers-title.svg" height="44" alt="Multi Ciphers"></a>
+
+</div>
 
 [![version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/effjy/multi-ciphers/releases)
 [![language: C](https://img.shields.io/badge/language-C11-00599C.svg?logo=c)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
@@ -13,14 +17,6 @@ encryption in C. It offers three independent ciphers and uses
 **Argon2id** for password-based key derivation. There is nothing to install
 beyond a C compiler and the C standard library — every cryptographic
 primitive is bundled in `src/`.
-
-```
- _____         _ _   _    _____ _       _
-|     |_ _ ___| |_|_| |  |     |_|___ _| |_ ___ ___ ___
-| | | | | | -_| | | | |  |   --| | . | . |   | -_|  _|_-<
-|_|_|_|___|___|_|_|_|_|  |_____|_|  _|___|_|_|___|_| |___|
-                                 |_|
-```
 
 > Repository: **https://github.com/effjy/multi-ciphers**
 
