@@ -13,7 +13,7 @@
 [![license](https://img.shields.io/badge/license-public%20domain-green.svg)](#license)
 
 A small, **dependency-free** command-line tool for authenticated file
-encryption in C. It offers three independent ciphers and uses
+encryption in C. It offers four independent ciphers and uses
 **Argon2id** for password-based key derivation. There is nothing to install
 beyond a C compiler and the C standard library — every cryptographic
 primitive is bundled in `src/`.
