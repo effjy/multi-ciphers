@@ -5,6 +5,7 @@
 
 #include "aes.h"
 #include "serpent.h"
+#include "twofish.h"
 #include "gcm.h"
 #include "chacha20poly1305.h"
 #include "argon2.h"
@@ -22,6 +23,9 @@ static void aes_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
 }
 static void serpent_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
     serpent_encrypt_block((const serpent_ctx *)c, in, out);
+}
+static void twofish_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
+    twofish_encrypt_block((const twofish_ctx *)c, in, out);
 }
 
 static int test_aes_block(void) {
@@ -50,6 +54,18 @@ static int test_serpent_block(void) {
     serpent_encrypt_block(&c, pt, ct);
     if (!eq(ct, exp, 16)) { fprintf(stderr,"FAIL Serpent-256 block KAT\n"); hexdump("got",ct,16); return 1; }
     fprintf(stderr, "ok   Serpent-256 block KAT\n");
+    return 0;
+}
+
+static int test_twofish_block(void) {
+    /* Official Twofish 256-bit ECB KAT: key=0, pt=0. */
+    uint8_t key[32] = {0}, pt[16] = {0}, ct[16];
+    const uint8_t exp[16] = {0x57,0xFF,0x73,0x9D,0x4D,0xC9,0x2C,0x1B,
+                             0xD7,0xFC,0x01,0x70,0x0C,0xC8,0x21,0x6F};
+    twofish_ctx c; twofish_setkey(&c, key);
+    twofish_encrypt_block(&c, pt, ct);
+    if (!eq(ct, exp, 16)) { fprintf(stderr,"FAIL Twofish-256 block KAT\n"); hexdump("got",ct,16); return 1; }
+    fprintf(stderr, "ok   Twofish-256 block KAT\n");
     return 0;
 }
 
@@ -139,6 +155,7 @@ int mc_selftest(void) {
     fprintf(stderr, "Multi Ciphers self-test:\n");
     fails += test_aes_block();
     fails += test_serpent_block();
+    fails += test_twofish_block();
 
     {
         uint8_t key[32]; for (int i=0;i<32;i++) key[i]=(uint8_t)(i*2+1);
@@ -146,6 +163,8 @@ int mc_selftest(void) {
         fails += test_gcm_roundtrip("AES-256-GCM", aes_blk, &ac);
         serpent_ctx sc; serpent_setkey(&sc, key, 32);
         fails += test_gcm_roundtrip("Serpent-256-GCM", serpent_blk, &sc);
+        twofish_ctx tc; twofish_setkey(&tc, key);
+        fails += test_gcm_roundtrip("Twofish-256-GCM", twofish_blk, &tc);
     }
     fails += test_xchacha_roundtrip();
     fails += test_xchacha_kat();

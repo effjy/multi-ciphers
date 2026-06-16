@@ -1,6 +1,6 @@
 /* Multi Ciphers - dependency-free file encryption CLI.
  *
- * Ciphers : AES-256-GCM, XChaCha20-Poly1305, Serpent-256-GCM
+ * Ciphers : AES-256-GCM, XChaCha20-Poly1305, Serpent-256-GCM, Twofish-256-GCM
  * KDF     : Argon2id (low / medium / high strength profiles)
  */
 #include <stdio.h>
@@ -12,6 +12,7 @@
 
 #include "aes.h"
 #include "serpent.h"
+#include "twofish.h"
 #include "gcm.h"
 #include "chacha20poly1305.h"
 #include "argon2.h"
@@ -32,7 +33,7 @@
 #define TAG_LEN   16
 #define KEY_LEN   32
 
-enum { CIPHER_AES = 1, CIPHER_XCHACHA = 2, CIPHER_SERPENT = 3 };
+enum { CIPHER_AES = 1, CIPHER_XCHACHA = 2, CIPHER_SERPENT = 3, CIPHER_TWOFISH = 4 };
 enum { KDF_ARGON2ID = 1 };
 enum { STR_LOW = 1, STR_MEDIUM = 2, STR_HIGH = 3 };
 
@@ -64,6 +65,9 @@ static void aes_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
 }
 static void serpent_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
     serpent_encrypt_block((const serpent_ctx *)c, in, out);
+}
+static void twofish_blk(const void *c, const uint8_t in[16], uint8_t out[16]) {
+    twofish_encrypt_block((const twofish_ctx *)c, in, out);
 }
 
 /* ---- helpers ---- */
@@ -186,6 +190,10 @@ static int do_encrypt(const char *in_path, const char *out_path,
         serpent_ctx c; serpent_setkey(&c, key, KEY_LEN);
         gcm_encrypt(serpent_blk, &c, nonce, hdr, HDR_LEN, pt, ptlen, ct, tag);
         memset(&c, 0, sizeof(c));
+    } else if (cipher == CIPHER_TWOFISH) {
+        twofish_ctx c; twofish_setkey(&c, key);
+        gcm_encrypt(twofish_blk, &c, nonce, hdr, HDR_LEN, pt, ptlen, ct, tag);
+        memset(&c, 0, sizeof(c));
     } else { /* XChaCha20-Poly1305 */
         xchacha20poly1305_encrypt(ct, tag, pt, ptlen, hdr, HDR_LEN, nonce, key);
     }
@@ -224,7 +232,8 @@ static int do_decrypt(const char *in_path, const char *out_path, const char *pwd
         fprintf(stderr, "error: unsupported format version %u\n", hdr[4]); free(blob); return 1;
     }
     int cipher = hdr[5];
-    if (cipher != CIPHER_AES && cipher != CIPHER_XCHACHA && cipher != CIPHER_SERPENT) {
+    if (cipher != CIPHER_AES && cipher != CIPHER_XCHACHA &&
+        cipher != CIPHER_SERPENT && cipher != CIPHER_TWOFISH) {
         fprintf(stderr, "error: unknown cipher id %d\n", cipher); free(blob); return 1;
     }
     if (hdr[6] != KDF_ARGON2ID) {
@@ -265,6 +274,10 @@ static int do_decrypt(const char *in_path, const char *out_path, const char *pwd
     } else if (cipher == CIPHER_SERPENT) {
         serpent_ctx c; serpent_setkey(&c, key, KEY_LEN);
         rc = gcm_decrypt(serpent_blk, &c, nonce, hdr, HDR_LEN, ct, ctlen, tag, pt);
+        memset(&c, 0, sizeof(c));
+    } else if (cipher == CIPHER_TWOFISH) {
+        twofish_ctx c; twofish_setkey(&c, key);
+        rc = gcm_decrypt(twofish_blk, &c, nonce, hdr, HDR_LEN, ct, ctlen, tag, pt);
         memset(&c, 0, sizeof(c));
     } else if (cipher == CIPHER_XCHACHA) {
         rc = xchacha20poly1305_decrypt(pt, ct, ctlen, tag, hdr, HDR_LEN, nonce, key);
@@ -310,14 +323,16 @@ static int choose_cipher(void) {
             "  1) AES-256-GCM          (default)\n"
             "  2) XChaCha20-Poly1305\n"
             "  3) Serpent-256-GCM\n"
+            "  4) Twofish-256-GCM\n"
             "  0) Cancel\n");
         if (prompt_line("Cipher [1]: ", buf, sizeof(buf)) != 0) return CIPHER_AES;
         if (buf[0] == 0)   return CIPHER_AES;     /* Enter = default */
         if (buf[0] == '1') return CIPHER_AES;
         if (buf[0] == '2') return CIPHER_XCHACHA;
         if (buf[0] == '3') return CIPHER_SERPENT;
+        if (buf[0] == '4') return CIPHER_TWOFISH;
         if (buf[0] == '0') return 0;
-        fprintf(stderr, "Please enter 0, 1, 2 or 3.\n");
+        fprintf(stderr, "Please enter 0, 1, 2, 3 or 4.\n");
     }
 }
 
@@ -406,6 +421,7 @@ static const char *cipher_name(int c) {
     case CIPHER_AES: return "AES-256-GCM";
     case CIPHER_XCHACHA: return "XChaCha20-Poly1305";
     case CIPHER_SERPENT: return "Serpent-256-GCM";
+    case CIPHER_TWOFISH: return "Twofish-256-GCM";
     default: return "?";
     }
 }
@@ -423,6 +439,7 @@ static void usage(FILE *f, const char *prog) {
 "Ciphers (-c):   aes        AES-256-GCM (default)\n"
 "                xchacha    XChaCha20-Poly1305\n"
 "                serpent    Serpent-256-GCM\n"
+"                twofish    Twofish-256-GCM\n"
 "\n"
 "Argon2id strength (-s):\n"
 "                low        64 MiB,  t=3, 1 lane\n"
@@ -467,6 +484,7 @@ int main(int argc, char **argv) {
             if (!strcmp(v,"aes")) cipher = CIPHER_AES;
             else if (!strcmp(v,"xchacha")||!strcmp(v,"xchacha20")) cipher = CIPHER_XCHACHA;
             else if (!strcmp(v,"serpent")) cipher = CIPHER_SERPENT;
+            else if (!strcmp(v,"twofish")) cipher = CIPHER_TWOFISH;
             else { fprintf(stderr, "error: unknown cipher '%s'\n", v); return 2; }
         }
         else if (!strcmp(a, "-s") && i+1 < argc) {
