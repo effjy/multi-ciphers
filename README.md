@@ -8,7 +8,7 @@
 [![language: C](https://img.shields.io/badge/language-C11-00599C.svg?logo=c)](https://en.wikipedia.org/wiki/C11_(C_standard_revision))
 [![dependencies: none](https://img.shields.io/badge/dependencies-none-success.svg)](#building)
 [![platform: Linux](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](#building)
-[![ciphers](https://img.shields.io/badge/ciphers-AES--GCM%20%7C%20XChaCha20%20%7C%20Serpent-purple.svg)](#features)
+[![ciphers](https://img.shields.io/badge/ciphers-AES--GCM%20%7C%20XChaCha20%20%7C%20Serpent%20%7C%20Twofish-purple.svg)](#features)
 [![KDF: Argon2id](https://img.shields.io/badge/KDF-Argon2id-orange.svg)](#argon2id-strength-profiles)
 [![license](https://img.shields.io/badge/license-public%20domain-green.svg)](#license)
 
@@ -24,10 +24,11 @@ primitive is bundled in `src/`.
 
 ## Features
 
-- **Three ciphers**, all AEAD (encrypt + authenticate in one pass):
+- **Four ciphers**, all AEAD (encrypt + authenticate in one pass):
   - `AES-256-GCM`
   - `XChaCha20-Poly1305`
   - `Serpent-256-GCM`
+  - `Twofish-256-GCM`
 - **Argon2id** key derivation with three selectable strength profiles
   (`low` / `medium` / `high`). Medium is 1 GiB of memory across 4 lanes.
 - **Two ways to drive it**: a friendly **interactive menu** and a full
@@ -99,6 +100,7 @@ Output file: secret.pdf.mc
   1) AES-256-GCM          (default)
   2) XChaCha20-Poly1305
   3) Serpent-256-GCM
+  4) Twofish-256-GCM
   0) Cancel
 Cipher [1]: 3
 
@@ -189,7 +191,7 @@ When encrypting, you are walked through a **cipher menu** and an
 |--------|---------|
 | `-i <path>` | input file (required) |
 | `-o <path>` | output file (required) |
-| `-c <cipher>` | `aes` (default), `xchacha`, or `serpent` |
+| `-c <cipher>` | `aes` (default), `xchacha`, `serpent`, or `twofish` |
 | `-s <strength>` | `low`, `medium` (default), or `high` |
 | `-p <password>` | supply the password inline (otherwise prompted) |
 
@@ -223,7 +225,7 @@ offset  size  field
 ------  ----  -------------------------------------------
   0      4    magic "MCPH"
   4      1    format version (1)
-  5      1    cipher id   (1=AES-256-GCM, 2=XChaCha20-Poly1305, 3=Serpent-256-GCM)
+  5      1    cipher id   (1=AES-256-GCM, 2=XChaCha20-Poly1305, 3=Serpent-256-GCM, 4=Twofish-256-GCM)
   6      1    kdf id      (1=Argon2id)
   7      1    strength    (1=low, 2=medium, 3=high; informational)
   8      4    Argon2 t_cost (passes)
@@ -236,8 +238,9 @@ offset  size  field
 ```
 
 A 32-byte key is derived with Argon2id and used directly as the cipher key.
-Serpent is a 128-bit block cipher, so it is run in the same GCM construction
-as AES, giving an authenticated `Serpent-256-GCM`.
+Serpent and Twofish are 128-bit block ciphers, so they are run in the same GCM
+construction as AES, giving authenticated `Serpent-256-GCM` and
+`Twofish-256-GCM`.
 
 ---
 
@@ -267,6 +270,7 @@ test vectors (`./multiciphers selftest`).
 | ChaCha20 / Poly1305 | RFC 8439 |
 | XChaCha20-Poly1305 | draft-irtf-cfrg-xchacha-03 (verified against §A.3.1) |
 | Serpent | Anderson/Biham/Knudsen; S-box equations by Dag Arne Osvik; verified against a published Serpent-256 vector |
+| Twofish | Schneier/Kelsey/Whiting/Wagner/Hall/Ferguson (public domain); verified against the official Twofish-256 ECB vector |
 | BLAKE2b | RFC 7693 |
 | Argon2id | PHC winner / RFC 9106; verified byte-for-byte against the reference implementation (https://github.com/P-H-C/phc-winner-argon2) |
 
@@ -288,6 +292,7 @@ multiciphers/
     ├── selftest.c           known-answer & round-trip tests
     ├── aes.c / aes.h        AES-256 block cipher
     ├── serpent.c / serpent.h Serpent block cipher
+    ├── twofish.c / twofish.h Twofish block cipher
     ├── gcm.c / gcm.h        generic GCM over a 128-bit block cipher
     ├── chacha20poly1305.*   XChaCha20-Poly1305 AEAD
     ├── argon2.c / argon2.h  Argon2id KDF
