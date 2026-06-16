@@ -1,6 +1,6 @@
 <div align="center">
  
-<a href="https://github.com/effjy/multi-ciphers/"><img src="titles/multi-ciphers-title.svg" height="44" alt="Multi Ciphers"></a>
+<a href="https://github.com/effjy/multi-ciphers/"><img src="titles/multi-ciphers-title.svg" height="52" alt="Multi Ciphers"></a>
 
 </div>
 
